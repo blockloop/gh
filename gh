@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 import subprocess
 import webbrowser
 import argparse
+import platform
 
 def sh(cmd,exit_on_fail=False):
 	proc = subprocess.Popen(cmd,
@@ -11,13 +12,14 @@ def sh(cmd,exit_on_fail=False):
 		stderr=subprocess.PIPE)
 	out,err = proc.communicate()
 	code = proc.returncode
-	if exit_on_fail and code <> 0:
+	if exit_on_fail and code != 0:
+		err = err.decode('utf-8')
 		sys.exit("Non-zero exit code ({})\nMessage: {}".format(code,err))
-	return code,out+err
+	return code,str(out+err, encoding='utf8')
 
 def getBranch():
 	code,out = sh("git branch --no-color", True)
-	finds = [x for x in out.split("\n") if "*" in x]
+	finds = [x for x in out.split('\n') if "*" in x]
 	if len(finds) == 0:
 		sys.exit("No branches found")
 	return finds[0].split(" ")[1]
@@ -65,13 +67,20 @@ url = remote\
 	.replace(".git", "")\
 	.replace("git@", "http://")
 
-if opts.branch <> "master":
-		prefix = "tree" if "github" in url else "branch"
-		url += "/{}/{}".format(prefix,opts.branch)
+if opts.branch != "master":
+	prefix = "tree" if "github" in url else "branch"
+	url += "/{}/{}".format(prefix,opts.branch)
 
 #
 # Acting
 #
-print url
-if not opts.nolaunch:
-	webbrowser.open(url)
+print(url)
+if opts.nolaunch:
+	sys.exit(0)
+
+# cygwin doesn't like webbrowser so we'll use cygstart
+if 'cygwin' in platform.system().lower():
+	from subprocess import call
+	call(['cygstart', url])
+else:
+	webbrowser.open_new_tab(url)
